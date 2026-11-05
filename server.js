@@ -513,3 +513,5 @@ app.delete('/api/messages/:id', (req, res) => {
 app.listen(PORT, () => {
   console.log(`🚀 Serveur démarré sur http://localhost:${PORT}`);
 });
+
+module.exports = app;
