@@ -6,6 +6,18 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 
+
+
+const uploadDir = process.env.VERCEL ? '/tmp/uploads' : './uploads';
+
+try {
+    if (!fs.existsSync(uploadDir)){
+        fs.mkdirSync(uploadDir, { recursive: true });
+    }
+} catch (error) {
+    console.log("Impossible de créer le dossier sur cet environnement :", error);
+}
+
 // ==========================================
 // 1. INITIALISATION DE L'APPLICATION
 // ==========================================
