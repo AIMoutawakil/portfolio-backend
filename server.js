@@ -109,12 +109,28 @@ app.post('/api/login', (req, res) => {
 // ==========================================
 // 3. CONNEXION À LA BASE DE DONNÉES
 // ==========================================
-const db = mysql.createConnection({
-  host: process.env.DB_HOST,
-  port: process.env.DB_PORT,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
+const mysql = require('mysql'); // ou mysql2 si tu utilises ce package
+
+const db = mysql.createPool({
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME,
+    port: process.env.DB_PORT,
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0,
+    connectTimeout: 20000
+});
+
+// Optionnel : Tu peux garder un test de connexion au démarrage
+db.getConnection((err, connection) => {
+    if (err) {
+        console.error('Erreur de connexion à Clever Cloud :', err);
+    } else {
+        console.log('✅ Connecté au Pool MySQL Clever Cloud !');
+        connection.release(); // Libère la connexion pour qu'elle soit réutilisable
+    }
 });
 
 db.connect((err) => {
