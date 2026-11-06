@@ -10,7 +10,9 @@ require('dotenv').config();
 // 1. INITIALISATION DE L'APPLICATION
 // ==========================================
 const app = express();
-app.use(cors());
+app.use(cors({
+    origin: '*' 
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -24,10 +26,6 @@ try {
 } catch (error) {
     console.warn("Info Vercel : Mode serverless, utilisation du dossier temporaire.", error.message);
 }
-
-
-app.use(cors());
-app.use(express.json());
 
 const PORT = process.env.PORT || 5000;
 
@@ -117,11 +115,11 @@ const db = mysql.createPool({
     database: process.env.DB_NAME || 'b7xikwk2t8hifkb30bnl',
     port: 3306,
     waitForConnections: true,
-    connectionLimit: 5, // Abaissé pour la version gratuite Clever Cloud
+    connectionLimit: 5, 
     queueLimit: 0,
     connectTimeout: 30000,
     ssl: {
-        rejectUnauthorized: false // Indispensable pour la connexion Vercel -> Clever Cloud
+        rejectUnauthorized: false 
     }
 });
 
