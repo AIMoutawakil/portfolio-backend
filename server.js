@@ -135,14 +135,6 @@ db.getConnection((err, connection) => {
     }
 });
 
-db.connect((err) => {
-  if (err) {
-    console.error('❌ Erreur de connexion:', err);
-    return;
-  }
-  console.log('✅ Connecté avec succès à la base de données MySQL (portfolio_db)');
-});
-
 // ==========================================
 // 🚀 ROUTES DE L'API REST
 // ==========================================
