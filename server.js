@@ -3,19 +3,25 @@ const express = require('express');
 const cors = require('cors');
 const mysql = require('mysql2');
 const multer = require('multer');
+const fs = require('fs');
+const path = require('path');
+
+// ==========================================
+// 1. INITIALISATION DE L'APPLICATION
+// ==========================================
+const app = express();
+
+const uploadDir = process.env.VERCEL ? '/tmp/uploads' : path.join(__dirname, 'uploads');
 
 try {
     if (!fs.existsSync(uploadDir)){
         fs.mkdirSync(uploadDir, { recursive: true });
     }
 } catch (error) {
-    console.log("Impossible de créer le dossier sur cet environnement :", error);
+    console.warn("Info Vercel : Impossible de créer le dossier, mode serverless activé.", error.message);
 }
 
-// ==========================================
-// 1. INITIALISATION DE L'APPLICATION
-// ==========================================
-const app = express();
+
 app.use(cors());
 app.use(express.json());
 
@@ -27,23 +33,6 @@ const PUBLIC_API_URL = (
 
 // Dossier uploads basé sur l'emplacement de server.js (chemin absolu).
 const uploadsDir = path.join(__dirname, 'uploads');
-
-// ==========================================
-// 2. CONFIGURATION DES UPLOADS (Multer)
-// ==========================================
-const fs = require('fs');
-const path = require('path');
-
-// Sur Vercel, on utilise /tmp/uploads, sinon le dossier local ./uploads
-const uploadDir = process.env.VERCEL ? '/tmp/uploads' : path.join(__dirname, 'uploads');
-
-try {
-    if (!fs.existsSync(uploadDir)){
-        fs.mkdirSync(uploadDir, { recursive: true });
-    }
-} catch (error) {
-    console.warn("Info Vercel : Impossible de créer le dossier de manière classique, utilisation du mode serverless.", error.message);
-}
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
