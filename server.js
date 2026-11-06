@@ -109,27 +109,27 @@ app.post('/api/login', (req, res) => {
 // ==========================================
 // 3. CONNEXION À LA BASE DE DONNÉES
 // ==========================================
-const mysql = require('mysql'); // ou mysql2 si tu utilises ce package
+console.log("🛠️ Démarrage de la connexion MySQL...");
 
 const db = mysql.createPool({
-    host: process.env.DB_HOST,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
-    port: process.env.DB_PORT,
+    // Le "||" (OU) permet d'utiliser tes identifiants directs si Vercel ne trouve pas la variable
+    host: process.env.DB_HOST || 'b7xikwk2t8hifkb30bnl-mysql.services.clever-cloud.com',
+    user: process.env.DB_USER || 'udwpvwnw25z0fbm5',
+    password: process.env.DB_PASSWORD || 'XyspPdYXYoY76aY1yOY4',
+    database: process.env.DB_NAME || 'b7xikwk2t8hifkb30bnl',
+    port: 3306,
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0,
-    connectTimeout: 20000
+    connectTimeout: 30000 // Délai étendu à 30 secondes pour traverser l'Atlantique
 });
 
-// Optionnel : Tu peux garder un test de connexion au démarrage
 db.getConnection((err, connection) => {
     if (err) {
-        console.error('Erreur de connexion à Clever Cloud :', err);
+        console.error('❌ Échec de la connexion :', err);
     } else {
-        console.log('✅ Connecté au Pool MySQL Clever Cloud !');
-        connection.release(); // Libère la connexion pour qu'elle soit réutilisable
+        console.log('✅ Connecté au Pool MySQL Clever Cloud avec succès !');
+        connection.release();
     }
 });
 
