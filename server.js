@@ -1,6 +1,5 @@
 const express = require('express');
 const cors = require('cors');
-const mysql = require('mysql2');
 const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
@@ -116,7 +115,7 @@ const db = mysql.createPool({
     host: process.env.DB_HOST || 'b7xikwk2t8hifkb30bnl-mysql.services.clever-cloud.com',
     user: process.env.DB_USER || 'udwpvwnw25z0fbm5',
     password: process.env.DB_PASSWORD || 'XyspPdYXYoY76aY1yOY4',
-    database: process.env.DB_NAME || 'b7xikwk2t8hifkb30bnl',
+    database: process.env.DB_NAME || 'b7xikwk2t8hifkb30bn1',
     port: 3306,
     waitForConnections: true,
     connectionLimit: 10,
