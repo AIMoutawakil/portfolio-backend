@@ -111,21 +111,23 @@ app.post('/api/login', (req, res) => {
 console.log("🛠️ Démarrage de la connexion MySQL...");
 
 const db = mysql.createPool({
-    // Le "||" (OU) permet d'utiliser tes identifiants directs si Vercel ne trouve pas la variable
     host: process.env.DB_HOST || 'b7xikwk2t8hifkb30bnl-mysql.services.clever-cloud.com',
     user: process.env.DB_USER || 'udwpvwnw25z0fbm5',
     password: process.env.DB_PASSWORD || 'XyspPdYXYoY76aY1yOY4',
-    database: process.env.DB_NAME || 'b7xikwk2t8hifkb30bn1',
+    database: process.env.DB_NAME || 'b7xikwk2t8hifkb30bnl',
     port: 3306,
     waitForConnections: true,
-    connectionLimit: 10,
+    connectionLimit: 5, // Abaissé pour la version gratuite Clever Cloud
     queueLimit: 0,
-    connectTimeout: 30000 // Délai étendu à 30 secondes pour traverser l'Atlantique
+    connectTimeout: 30000,
+    ssl: {
+        rejectUnauthorized: false // Indispensable pour la connexion Vercel -> Clever Cloud
+    }
 });
 
 db.getConnection((err, connection) => {
     if (err) {
-        console.error('❌ Échec de la connexion :', err);
+        console.error('❌ Échec de la connexion (SSL/Vercel) :', err);
     } else {
         console.log('✅ Connecté au Pool MySQL Clever Cloud avec succès !');
         connection.release();
