@@ -1,16 +1,21 @@
-require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const mysql = require('mysql2');
 const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
+require('dotenv').config();
+
 
 // ==========================================
 // 1. INITIALISATION DE L'APPLICATION
 // ==========================================
 const app = express();
+app.use(cors());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
+// 3. GESTION DU DOSSIER UPLOADS (Compatible Vercel)
 const uploadDir = process.env.VERCEL ? '/tmp/uploads' : path.join(__dirname, 'uploads');
 
 try {
@@ -18,7 +23,7 @@ try {
         fs.mkdirSync(uploadDir, { recursive: true });
     }
 } catch (error) {
-    console.warn("Info Vercel : Impossible de créer le dossier, mode serverless activé.", error.message);
+    console.warn("Info Vercel : Mode serverless, utilisation du dossier temporaire.", error.message);
 }
 
 
