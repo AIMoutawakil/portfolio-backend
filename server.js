@@ -114,20 +114,13 @@ const db = mysql.createPool({
     database: process.env.DB_NAME || 'b7xikwk2t8hifkb30bnl',
     port: 3306,
     waitForConnections: true,
-    connectionLimit: 5, 
+    connectionLimit: 2, // Limite très basse obligatoire pour Vercel
     queueLimit: 0,
-    connectTimeout: 30000,
+    connectTimeout: 20000,
+    enableKeepAlive: true, // Empêche l'erreur ETIMEDOUT
+    keepAliveInitialDelay: 0,
     ssl: {
         rejectUnauthorized: false 
-    }
-});
-
-db.getConnection((err, connection) => {
-    if (err) {
-        console.error('❌ Échec de la connexion (SSL/Vercel) :', err);
-    } else {
-        console.log('✅ Connecté au Pool MySQL Clever Cloud avec succès !');
-        connection.release();
     }
 });
 
