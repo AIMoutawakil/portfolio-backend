@@ -4,8 +4,10 @@ const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
 const mysql = require('mysql2');
-require('dotenv').config();
 
+if (!process.env.VERCEL) {
+  require('dotenv').config();
+}
 // ==========================================
 // 1. INITIALISATION DE L'APPLICATION
 // ==========================================
