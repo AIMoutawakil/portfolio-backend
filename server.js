@@ -4,6 +4,14 @@ const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
 const mysql = require('mysql2');
+const cloudinary = require('cloudinary').v2;
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
+});
 
 if (!process.env.VERCEL) {
   require('dotenv').config();
@@ -41,18 +49,21 @@ const PUBLIC_API_URL = (
   process.env.PUBLIC_API_URL || `http://localhost:${PORT}`
 ).replace(/\/+$/, '');
 
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, uploadsDir);
-  },
-  filename: function (req, file, cb) {
-    cb(null, 'file-' + Date.now() + path.extname(file.originalname));
-  }
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
-const upload = multer({ storage });
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: 'portfolio_gmp', // Un dossier sera créé automatiquement sur ton Cloudinary
+    resource_type: 'auto',   // Permet d'accepter les images (png/jpg) ET les documents (pdf pour le CV)
+  },
+});
 
-app.use('/uploads', express.static(uploadsDir));
+const upload = multer({ storage: storage });
 
 function getPublicFileUrl(filename) {
   return `${PUBLIC_API_URL}/uploads/${encodeURIComponent(filename)}`;
@@ -176,14 +187,15 @@ app.put('/api/about', (req, res) => {
   });
 });
 
-app.post('/api/upload-cv', upload.single('cv_file'), (req, res) => {
-  if (!req.file) return res.status(400).json({ error: "Aucun fichier reçu" });
-  res.json({ cv_url: getPublicFileUrl(req.file.filename) });
-});
-
 app.post('/api/upload-project-file', upload.single('file'), (req, res) => {
   if (!req.file) return res.status(400).json({ error: "Aucun fichier reçu" });
-  res.json({ url: getPublicFileUrl(req.file.filename) });
+  // req.file.path contient maintenant l'URL web sécurisée générée par Cloudinary
+  res.json({ url: req.file.path }); 
+});
+
+app.post('/api/upload-cv', upload.single('cv_file'), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: "Aucun fichier reçu" });
+  res.json({ cv_url: req.file.path });
 });
 
 app.get('/api/skills', (req, res) => {
