@@ -25,11 +25,11 @@ app.use(express.urlencoded({ extended: true }));
 // ==========================================
 // 2. GESTION DU DOSSIER UPLOADS (Compatible Vercel)
 // ==========================================
-const uploadsDir = process.env.VERCEL ? '/tmp/uploads' : path.join(__dirname, 'uploads');
+const uploadDir = process.env.VERCEL ? '/tmp/uploads' : path.join(__dirname, 'uploads');
 
 try {
-  if (!fs.existsSync(uploadsDir)) {
-    fs.mkdirSync(uploadsDir, { recursive: true });
+  if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
   }
 } catch (error) {
   console.warn("Info Vercel : Mode serverless, dossier temporaire utilisé.", error.message);
@@ -43,7 +43,7 @@ const PUBLIC_API_URL = (
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, uploadsDir);
+    cb(null, uploadDir);
   },
   filename: function (req, file, cb) {
     cb(null, 'file-' + Date.now() + path.extname(file.originalname));
@@ -52,7 +52,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
-app.use('/uploads', express.static(uploadsDir));
+app.use('/uploads', express.static(uploadDir));
 
 function getPublicFileUrl(filename) {
   return `${PUBLIC_API_URL}/uploads/${encodeURIComponent(filename)}`;
@@ -445,5 +445,4 @@ if (!process.env.VERCEL) {
     console.log(`🚀 Serveur démarré sur http://localhost:${PORT}`);
   });
 }
-
 module.exports = app;
