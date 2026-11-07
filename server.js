@@ -20,11 +20,11 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // 3. GESTION DU DOSSIER UPLOADS (Compatible Vercel)
-const uploadDir = process.env.VERCEL ? '/tmp/uploads' : path.join(__dirname, 'uploads');
+const uploadsDir = process.env.VERCEL ? '/tmp/uploads' : path.join(__dirname, 'uploads');
 
 try {
-    if (!fs.existsSync(uploadDir)){
-        fs.mkdirSync(uploadDir, { recursive: true });
+    if (!fs.existsSync(uploadsDir)){
+        fs.mkdirSync(uploadsDir, { recursive: true });
     }
 } catch (error) {
     console.warn("Info Vercel : Mode serverless, utilisation du dossier temporaire.", error.message);
@@ -36,23 +36,19 @@ const PUBLIC_API_URL = (
   process.env.PUBLIC_API_URL || `http://localhost:${PORT}`
 ).replace(/\/+$/, '');
 
-// Dossier uploads basé sur l'emplacement de server.js (chemin absolu).
-const uploadsDir = path.join(__dirname, 'uploads');
-
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     cb(null, uploadsDir);
   },
   filename: function (req, file, cb) {
-    // Nom unique pour éviter les doublons courants.
     cb(null, 'file-' + Date.now() + path.extname(file.originalname));
   }
 });
 
 const upload = multer({ storage });
 
-// Rendre les images et fichiers accessibles publiquement sur Internet.
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// Rendre les images accessibles
+app.use('/uploads', express.static(uploadsDir));
 
 // Construit l'URL publique d'un fichier envoyé dans /uploads.
 function getPublicFileUrl(filename) {
@@ -528,10 +524,12 @@ app.delete('/api/messages/:id', (req, res) => {
 });
 
 // ==========================================
-// 4. LANCEMENT DU SERVEUR
+// 4. LANCEMENT DU SERVEUR (Uniquement en local)
 // ==========================================
-app.listen(PORT, () => {
-  console.log(`🚀 Serveur démarré sur http://localhost:${PORT}`);
-});
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`🚀 Serveur démarré sur http://localhost:${PORT}`);
+  });
+}
 
 module.exports = app;
