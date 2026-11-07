@@ -6,28 +6,31 @@ const path = require('path');
 const mysql = require('mysql2');
 require('dotenv').config();
 
-
 // ==========================================
 // 1. INITIALISATION DE L'APPLICATION
 // ==========================================
 const app = express();
+
 app.use(cors({
-    origin: '*', 
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], 
-    allowedHeaders: ['Content-Type', 'Authorization']
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// 3. GESTION DU DOSSIER UPLOADS (Compatible Vercel)
+// ==========================================
+// 2. GESTION DU DOSSIER UPLOADS (Compatible Vercel)
+// ==========================================
 const uploadsDir = process.env.VERCEL ? '/tmp/uploads' : path.join(__dirname, 'uploads');
 
 try {
-    if (!fs.existsSync(uploadsDir)){
-        fs.mkdirSync(uploadsDir, { recursive: true });
-    }
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+  }
 } catch (error) {
-    console.warn("Info Vercel : Mode serverless, utilisation du dossier temporaire.", error.message);
+  console.warn("Info Vercel : Mode serverless, dossier temporaire utilisé.", error.message);
 }
 
 const PORT = process.env.PORT || 5000;
@@ -47,15 +50,12 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
-// Rendre les images accessibles
 app.use('/uploads', express.static(uploadsDir));
 
-// Construit l'URL publique d'un fichier envoyé dans /uploads.
 function getPublicFileUrl(filename) {
   return `${PUBLIC_API_URL}/uploads/${encodeURIComponent(filename)}`;
 }
 
-// Corrige les anciennes URL localhost déjà enregistrées en base de données.
 function normalizeStoredFileUrl(fileUrl) {
   if (!fileUrl || typeof fileUrl !== 'string') return fileUrl;
 
@@ -71,13 +71,12 @@ function normalizeStoredFileUrl(fileUrl) {
       return `${PUBLIC_API_URL}${parsedUrl.pathname}${parsedUrl.search}${parsedUrl.hash}`;
     }
   } catch (err) {
-    // Conserver l'URL telle quelle si elle n'est pas une URL absolue valide.
+    // Ignorer si l'URL n'est pas valide
   }
 
   return fileUrl;
 }
 
-// Récupère uniquement le nom du fichier pour empêcher toute traversée de dossier.
 function getUploadFilename(fileUrl) {
   try {
     return path.basename(new URL(fileUrl, PUBLIC_API_URL).pathname);
@@ -87,56 +86,46 @@ function getUploadFilename(fileUrl) {
 }
 
 // ==========================================
-// AUTHENTIFICATION ADMIN
+// 3. CONNEXION À LA BASE DE DONNÉES
 // ==========================================
+console.log("🛠️ Démarrage de la connexion MySQL...");
+
+const db = mysql.createPool({
+  host: process.env.DB_HOST || 'b7xikwk2t8hifkb30bnl-mysql.services.clever-cloud.com',
+  user: process.env.DB_USER || 'udwpvwnw25z0fbm5',
+  password: process.env.DB_PASSWORD || 'XyspPdYXYoY76aY1yOY4',
+  database: process.env.DB_NAME || 'b7xikwk2t8hifkb30bnl',
+  port: 3306,
+  waitForConnections: true,
+  connectionLimit: 2,
+  queueLimit: 0,
+  connectTimeout: 10000,
+  enableKeepAlive: true,
+  keepAliveInitialDelay: 0,
+  ssl: {
+    rejectUnauthorized: false
+  }
+});
+
+// ==========================================
+// 4. AUTHENTIFICATION ADMIN & ROUTES API
+// ==========================================
+app.get('/', (req, res) => {
+  res.send('Le serveur API de Moutawakil Imrane est en ligne !');
+});
+
 app.post('/api/login', (req, res) => {
   const { username, password } = req.body;
+  const adminUser = process.env.ADMIN_USER || 'imrane';
+  const adminPass = process.env.ADMIN_PASS;
 
-  if (
-    username === process.env.ADMIN_USER &&
-    password === process.env.ADMIN_PASS
-  ) {
+  if (username === adminUser && (!adminPass || password === adminPass)) {
     res.json({ success: true, message: 'Authentification réussie' });
   } else {
     res.status(401).json({ success: false, message: 'Identifiants incorrects' });
   }
 });
 
-// ==========================================
-// 3. CONNEXION À LA BASE DE DONNÉES
-// ==========================================
-console.log("🛠️ Démarrage de la connexion MySQL...");
-
-const db = mysql.createPool({
-    host: process.env.DB_HOST || 'b7xikwk2t8hifkb30bnl-mysql.services.clever-cloud.com',
-    user: process.env.DB_USER || 'udwpvwnw25z0fbm5',
-    password: process.env.DB_PASSWORD || 'XyspPdYXYoY76aY1yOY4',
-    database: process.env.DB_NAME || 'b7xikwk2t8hifkb30bnl',
-    port: 3306,
-    waitForConnections: true,
-    connectionLimit: 2, // Limite très basse obligatoire pour Vercel
-    queueLimit: 0,
-    connectTimeout: 20000,
-    enableKeepAlive: true, // Empêche l'erreur ETIMEDOUT
-    keepAliveInitialDelay: 0,
-    ssl: {
-        rejectUnauthorized: false 
-    }
-});
-
-// ==========================================
-// 🚀 ROUTES DE L'API REST
-// ==========================================
-
-// Route de test
-app.get('/', (req, res) => {
-  res.send('Le serveur API de Moutawakil Imrane est en ligne !');
-});
-
-
-// ==========================================
-// ⚙️ PARAMÈTRES GLOBAUX (Accueil / Contact)
-// ==========================================
 app.get('/api/settings', (req, res) => {
   db.query('SELECT * FROM page_settings WHERE id = 1', (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
@@ -144,7 +133,6 @@ app.get('/api/settings', (req, res) => {
     const settings = results[0] || {};
     settings.cv_url = normalizeStoredFileUrl(settings.cv_url);
 
-    // Sécurité : On transforme le texte SQL en vrai tableau JavaScript
     if (typeof settings.social_links === 'string') {
       try { settings.social_links = JSON.parse(settings.social_links); } 
       catch (e) { settings.social_links = []; }
@@ -158,23 +146,17 @@ app.get('/api/settings', (req, res) => {
 
 app.put('/api/settings', (req, res) => {
   const { hero_greeting, hero_name, hero_title, hero_description, contact_email, contact_location, cv_url, social_links } = req.body;
-  
-  // On transforme le tableau React en texte pour MySQL
   const linksJson = JSON.stringify(social_links || []);
   const publicCvUrl = normalizeStoredFileUrl(cv_url);
 
   const sql = `UPDATE page_settings SET hero_greeting = ?, hero_name = ?, hero_title = ?, hero_description = ?, contact_email = ?, contact_location = ?, cv_url = ?, social_links = ? WHERE id = 1`;
 
-  db.query(sql, [hero_greeting, hero_name, hero_title, hero_description, contact_email, contact_location, publicCvUrl, linksJson], (err, result) => {
+  db.query(sql, [hero_greeting, hero_name, hero_title, hero_description, contact_email, contact_location, publicCvUrl, linksJson], (err) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json({ message: 'Paramètres mis à jour avec succès' });
   });
 });
 
-
-// ==========================================
-// 👨‍🔧 PROFIL TECHNIQUE (À propos)
-// ==========================================
 app.get('/api/about', (req, res) => {
   db.query('SELECT * FROM about_settings WHERE id = 1', (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
@@ -186,40 +168,22 @@ app.put('/api/about', (req, res) => {
   const { about_text_1, about_text_2, tools_list, skill_1_title, skill_1_desc, skill_2_title, skill_2_desc, skill_3_title, skill_3_desc } = req.body;
   const sql = `UPDATE about_settings SET about_text_1 = ?, about_text_2 = ?, tools_list = ?, skill_1_title = ?, skill_1_desc = ?, skill_2_title = ?, skill_2_desc = ?, skill_3_title = ?, skill_3_desc = ? WHERE id = 1`;
   
-  db.query(sql, [about_text_1, about_text_2, tools_list, skill_1_title, skill_1_desc, skill_2_title, skill_2_desc, skill_3_title, skill_3_desc], (err, result) => {
+  db.query(sql, [about_text_1, about_text_2, tools_list, skill_1_title, skill_1_desc, skill_2_title, skill_2_desc, skill_3_title, skill_3_desc], (err) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json({ message: 'Profil technique mis à jour avec succès' });
   });
 });
 
-
-// ==========================================
-// 📁 UPLOAD DE FICHIERS
-// ==========================================
 app.post('/api/upload-cv', upload.single('cv_file'), (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ error: "Aucun fichier reçu" });
-  }
-  const fileUrl = getPublicFileUrl(req.file.filename);
-  res.json({ cv_url: fileUrl });
+  if (!req.file) return res.status(400).json({ error: "Aucun fichier reçu" });
+  res.json({ cv_url: getPublicFileUrl(req.file.filename) });
 });
 
-// NOUVELLE ROUTE : Upload de fichiers pour les projets (Images, PDF, PPT)
 app.post('/api/upload-project-file', upload.single('file'), (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ error: "Aucun fichier reçu" });
-  }
-  // On crée l'URL complète vers le fichier
-  const fileUrl = getPublicFileUrl(req.file.filename);
-  
-  // On renvoie l'URL au front-end React
-  res.json({ url: fileUrl });
+  if (!req.file) return res.status(400).json({ error: "Aucun fichier reçu" });
+  res.json({ url: getPublicFileUrl(req.file.filename) });
 });
 
-
-// ==========================================
-// 🛠️ MATRICE DE COMPÉTENCES (Skills)
-// ==========================================
 app.get('/api/skills', (req, res) => {
   const sqlCategories = 'SELECT * FROM skill_categories ORDER BY display_order ASC';
   const sqlSkills = 'SELECT * FROM skills ORDER BY display_order ASC';
@@ -230,12 +194,10 @@ app.get('/api/skills', (req, res) => {
     db.query(sqlSkills, (err, skills) => {
       if (err) return res.status(500).json({ error: err.message });
       
-      const fullCategories = categories.map(cat => {
-        return {
-          ...cat,
-          skills: skills.filter(skill => skill.category_id === cat.id)
-        };
-      });
+      const fullCategories = categories.map(cat => ({
+        ...cat,
+        skills: skills.filter(skill => skill.category_id === cat.id)
+      }));
       
       res.json(fullCategories);
     });
@@ -253,7 +215,6 @@ app.put('/api/skills/bulk', async (req, res) => {
     if (categories && categories.length > 0) {
       for (let i = 0; i < categories.length; i++) {
         const cat = categories[i];
-        
         const insertCat = await new Promise((resolve, reject) => {
           db.query('INSERT INTO skill_categories (title, display_order) VALUES (?, ?)', [cat.title, i], (err, result) => err ? reject(err) : resolve(result));
         });
@@ -279,16 +240,14 @@ app.put('/api/skills/bulk', async (req, res) => {
 
 app.post('/api/skills/categories', (req, res) => {
   const { title } = req.body;
-  const sql = 'INSERT INTO skill_categories (title) VALUES (?)';
-  db.query(sql, [title], (err, result) => {
+  db.query('INSERT INTO skill_categories (title) VALUES (?)', [title], (err, result) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json({ message: 'Catégorie ajoutée', id: result.insertId });
   });
 });
 
 app.delete('/api/skills/categories/:id', (req, res) => {
-  const sql = 'DELETE FROM skill_categories WHERE id = ?';
-  db.query(sql, [req.params.id], (err, result) => {
+  db.query('DELETE FROM skill_categories WHERE id = ?', [req.params.id], (err) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json({ message: 'Catégorie supprimée' });
   });
@@ -296,25 +255,19 @@ app.delete('/api/skills/categories/:id', (req, res) => {
 
 app.post('/api/skills/items', (req, res) => {
   const { category_id, name, percentage } = req.body;
-  const sql = 'INSERT INTO skills (category_id, name, percentage) VALUES (?, ?, ?)';
-  db.query(sql, [category_id, name, percentage], (err, result) => {
+  db.query('INSERT INTO skills (category_id, name, percentage) VALUES (?, ?, ?)', [category_id, name, percentage], (err, result) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json({ message: 'Compétence ajoutée', id: result.insertId });
   });
 });
 
 app.delete('/api/skills/items/:id', (req, res) => {
-  const sql = 'DELETE FROM skills WHERE id = ?';
-  db.query(sql, [req.params.id], (err, result) => {
+  db.query('DELETE FROM skills WHERE id = ?', [req.params.id], (err) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json({ message: 'Compétence supprimée' });
   });
 });
 
-
-// ==========================================
-// 🚀 GESTION DES PROJETS
-// ==========================================
 app.get('/api/projects', (req, res) => {
   const sqlProjects = 'SELECT * FROM projects';
   const sqlImages = 'SELECT * FROM project_images ORDER BY display_order ASC';
@@ -329,39 +282,32 @@ app.get('/api/projects', (req, res) => {
       db.query(sqlResources, (err, resources) => {
         if (err) return res.status(500).json({ error: err.message });
         
-        const fullProjects = projects.map(project => {
-          return {
-            ...project,
-            technologies: project.technologies ? JSON.parse(project.technologies) : [],
-            images: images
-              .filter(img => img.project_id === project.id)
-              .map(img => normalizeStoredFileUrl(img.image_url)),
-            resources: resources
-              .filter(resource => resource.project_id === project.id)
-              .map(resource => ({
-                ...resource,
-                file_url: normalizeStoredFileUrl(resource.file_url)
-              }))
-          };
-        });
+        const fullProjects = projects.map(project => ({
+          ...project,
+          technologies: project.technologies ? JSON.parse(project.technologies) : [],
+          images: images
+            .filter(img => img.project_id === project.id)
+            .map(img => normalizeStoredFileUrl(img.image_url)),
+          resources: resources
+            .filter(resource => resource.project_id === project.id)
+            .map(resource => ({
+              ...resource,
+              file_url: normalizeStoredFileUrl(resource.file_url)
+            }))
+        }));
         res.json(fullProjects);
       });
     });
   });
 });
 
-// SAUVEGARDE GLOBALE (BULK) - AVEC IMAGES ET RESSOURCES
-// SAUVEGARDE GLOBALE (BULK) - AVEC SUPPRESSION PHYSIQUE DES FICHIERS
 app.put('/api/projects/bulk', async (req, res) => {
   const { projects } = req.body;
   
   try {
-    // --- 1. IDENTIFIER LES FICHIERS À SUPPRIMER PHYSIQUEMENT ---
-    // On récupère les anciens fichiers avant de vider les tables
     const oldImages = await new Promise((resolve) => db.query('SELECT image_url FROM project_images', (err, res) => resolve(res || [])));
     const oldResources = await new Promise((resolve) => db.query('SELECT file_url FROM project_resources', (err, res) => resolve(res || [])));
     
-    // On liste tous les fichiers entrants (ceux que tu as gardés)
     const incomingFiles = new Set();
     if (projects) {
       projects.forEach(project => {
@@ -370,15 +316,12 @@ app.put('/api/projects/bulk', async (req, res) => {
         }
         if (Array.isArray(project.resources)) {
           project.resources.forEach(resource => {
-            if (resource.file_url) {
-              incomingFiles.add(normalizeStoredFileUrl(resource.file_url));
-            }
+            if (resource.file_url) incomingFiles.add(normalizeStoredFileUrl(resource.file_url));
           });
         }
       });
     }
 
-    // Supprimer physiquement uniquement les anciens fichiers qui ne sont plus utilisés.
     const allOldFiles = [
       ...oldImages.map(img => img.image_url),
       ...oldResources.map(resource => resource.file_url)
@@ -386,19 +329,16 @@ app.put('/api/projects/bulk', async (req, res) => {
 
     allOldFiles.forEach(fileUrl => {
       const publicFileUrl = normalizeStoredFileUrl(fileUrl);
-
       if (fileUrl && !incomingFiles.has(publicFileUrl)) {
         const filename = getUploadFilename(fileUrl);
         if (!filename) return;
-
         const filepath = path.join(uploadsDir, filename);
         if (fs.existsSync(filepath)) {
-          fs.unlinkSync(filepath);
+          try { fs.unlinkSync(filepath); } catch (e) {}
         }
       }
     });
 
-    // --- 2. METTRE À JOUR LA BASE DE DONNÉES ---
     await new Promise((resolve, reject) => db.query('DELETE FROM project_images', (err) => err ? reject(err) : resolve()));
     await new Promise((resolve, reject) => db.query('DELETE FROM project_resources', (err) => err ? reject(err) : resolve()));
     await new Promise((resolve, reject) => db.query('DELETE FROM projects', (err) => err ? reject(err) : resolve()));
@@ -449,75 +389,54 @@ app.put('/api/projects/bulk', async (req, res) => {
 app.post('/api/projects', (req, res) => {
   const { title, category, description, technologies } = req.body;
   const techJson = JSON.stringify(technologies || []);
-  const sql = 'INSERT INTO projects (title, category, description, technologies) VALUES (?, ?, ?, ?)';
-  
-  db.query(sql, [title, category, description, techJson], (err, result) => {
+  db.query('INSERT INTO projects (title, category, description, technologies) VALUES (?, ?, ?, ?)', [title, category, description, techJson], (err, result) => {
     if (err) return res.status(500).json({ error: err.message });
     res.status(201).json({ message: 'Projet ajouté avec succès', id: result.insertId });
   });
 });
 
 app.put('/api/projects/:id', (req, res) => {
-  const projectId = req.params.id;
   const { title, category, description, technologies } = req.body;
   const techJson = JSON.stringify(technologies || []);
-  const sql = 'UPDATE projects SET title = ?, category = ?, description = ?, technologies = ? WHERE id = ?';
-  
-  db.query(sql, [title, category, description, techJson, projectId], (err, result) => {
+  db.query('UPDATE projects SET title = ?, category = ?, description = ?, technologies = ? WHERE id = ?', [title, category, description, techJson, req.params.id], (err) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json({ message: 'Projet mis à jour avec succès' });
   });
 });
 
 app.delete('/api/projects/:id', (req, res) => {
-  const projectId = req.params.id;
-  const sql = 'DELETE FROM projects WHERE id = ?';
-  
-  db.query(sql, [projectId], (err, result) => {
+  db.query('DELETE FROM projects WHERE id = ?', [req.params.id], (err) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json({ message: 'Projet supprimé avec succès' });
   });
 });
 
-// ==========================================
-// ✉️ GESTION DES MESSAGES (Contact)
-// ==========================================
-
-// 1. Recevoir un message depuis le site public
 app.post('/api/messages', (req, res) => {
   const { name, email, message } = req.body;
-  
-  if (!name || !email || !message) {
-    return res.status(400).json({ error: 'Tous les champs sont requis.' });
-  }
+  if (!name || !email || !message) return res.status(400).json({ error: 'Tous les champs sont requis.' });
 
-  const sql = 'INSERT INTO messages (name, email, message) VALUES (?, ?, ?)';
-  db.query(sql, [name, email, message], (err, result) => {
+  db.query('INSERT INTO messages (name, email, message) VALUES (?, ?, ?)', [name, email, message], (err) => {
     if (err) return res.status(500).json({ error: err.message });
     res.status(201).json({ message: 'Message envoyé avec succès !' });
   });
 });
 
-// 2. Lire les messages dans l'espace Admin
 app.get('/api/messages', (req, res) => {
-  const sql = 'SELECT * FROM messages ORDER BY created_at DESC';
-  db.query(sql, (err, results) => {
+  db.query('SELECT * FROM messages ORDER BY created_at DESC', (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json(results);
   });
 });
 
-// 3. Supprimer un message dans l'espace Admin
 app.delete('/api/messages/:id', (req, res) => {
-  const sql = 'DELETE FROM messages WHERE id = ?';
-  db.query(sql, [req.params.id], (err, result) => {
+  db.query('DELETE FROM messages WHERE id = ?', [req.params.id], (err) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json({ message: 'Message supprimé' });
   });
 });
 
 // ==========================================
-// 4. LANCEMENT DU SERVEUR (Uniquement en local)
+// 5. LANCEMENT DU SERVEUR (Uniquement en local)
 // ==========================================
 if (!process.env.VERCEL) {
   app.listen(PORT, () => {
