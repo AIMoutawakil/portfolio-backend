@@ -25,6 +25,10 @@ app.use(cors({
   origin: '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
+  ['https://portfolio-frontend-pmehnx7wz.vercel.app', 
+    'https://moutawakilimrane.com', 
+    'https://www.moutawakilimrane.com'],
+    credentials: true
 }));
 
 app.use(express.json());
