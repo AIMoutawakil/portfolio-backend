@@ -22,13 +22,14 @@ if (!process.env.VERCEL) {
 const app = express();
 
 app.use(cors({
-  origin: '*',
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-  ['https://portfolio-frontend-pmehnx7wz.vercel.app', 
+  origin: [
+    'https://portfolio-frontend-pmehnx7wz.vercel.app', 
     'https://moutawakilimrane.com', 
-    'https://www.moutawakilimrane.com'],
-    credentials: true
+    'https://www.moutawakilimrane.com'
+  ],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
 }));
 
 app.use(express.json());
